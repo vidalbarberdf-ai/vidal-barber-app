@@ -1,131 +1,175 @@
-Vidal Barber
-const { useState, useEffect, useMemo } = React;
-const WHATSAPP = "5561998486285";
-const ENDERECO = "SHVP trecho 03, quadra 01, conjunto 03, lote 03, Av. Governador - Vicente Pires - DF, CEP: 72.001-208";
-const HORARIO = "Seg a Sáb · 10h às 21h";
-const ADMIN_PIN = "1234";
-const SERV0 = [
-{ id: "corte", nome: "Corte masculino", preco: 40 },
-{ id: "barba", nome: "Barba", preco: 40 },
-{ id: "infantil", nome: "Corte infantil", preco: 40 },
-{ id: "feminino", nome: "Corte feminino", preco: 40, aPartir: true },
-{ id: "corte_barba", nome: "Corte + Barba", preco: 70 },
-{ id: "sobrancelha", nome: "Sobrancelhas", preco: 15 },
-{ id: "alisamento", nome: "Alisamento", preco: 55 },
-{ id: "progressiva", nome: "Progressiva", preco: 80 },
-{ id: "esfoliacao", nome: "Esfoliação", preco: 35 },
-];
-const PLANOS = [
-{ id: "corte", nome: "Corte Ilimitado", preco: 120, inclui: ["corte", "infantil"] },
-{ id: "corte_barba", nome: "Corte e Barba Ilimitado", preco: 170, inclui: ["corte", "infantil", "barba", "corte_barba"] },
-];
-const BARB0 = ["Vidal", "Rafael", "Diego"];
-const GALERIA0 = Array.from({ length: 15 }, (_, i) => ({
-tipo: "foto",
-src: https://unsplash.com
-}));
-const HORAS = Array.from({ length: 11 }, (_, i) => ${10 + i}:00);
-const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const AVALIACOES = [
-{ n: "Lucas M.", t: "Melhor degradê de Vicente Pires. Ambiente top!" },
-{ n: "Pedro H.", t: "Atendimento pontual e acabamento impecável." },
-{ n: "Gabriel S.", t: "O Clube Vidal compensa demais. Recomendo." },
-];
-const brl = (v) => R$ ${Number(v).toFixed(2).replace(".", ",")};
-const uid = () => Math.random().toString(36).slice(2, 10);
-const iso = (d) => d.toISOString().slice(0, 10);
-const fmtData = (s) => s.split("-").reverse().join("/");
-function proximosDias(n = 12) {
-const out = []; const d = new Date();
-while (out.length < n) {
-if (d.getDay() !== 0) out.push(new Date(d));
-d.setDate(d.getDate() + 1);
-}
-return out;
-}
-function useLocal(key, init) {
-const [v, setV] = useState(() => {
-try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : init; } catch { return init; }
-});
-useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }, [key, v]);
-return [v, setV];
-}
-const Btn = ({ className = "", ...p }) => React.createElement("button", { ...p, className: min-h-[48px] px-5 rounded-xl font-semibold transition cursor-pointer active:scale-95 disabled:opacity-40 select-none ${className} });
-const Primary = (p) => React.createElement(Btn, { ...p, className: bg-[#E50914] text-white hover:bg-red-700 ${p.className || ""} });
-const Ghost = (p) => React.createElement(Btn, { ...p, className: bg-[#2a2a2a] text-gray-100 hover:bg-[#333] ${p.className || ""} });
-const Card = ({ className = "", ...p }) => React.createElement("div", { ...p, className: bg-[#1E1E1E] rounded-2xl p-4 border border-white/5 ${className} });
-const Modal = ({ children, onClose }) => React.createElement("div", { className: "fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" },
-React.createElement("div", { className: "bg-[#1E1E1E] w-full max-w-md rounded-2xl p-5 relative border border-white/10" },
-React.createElement("button", { onClick: onClose, className: "absolute top-2 right-2 w-12 h-12 flex items-center justify-center text-gray-400 cursor-pointer" }, "✕"),
-children
-)
-);
-function Bar({ label, valor, max }) {
-const pct = max ? (valor / max) * 100 : 0;
-return React.createElement("div", { className: "mb-3" },
-React.createElement("div", { className: "flex justify-between text-sm mb-1" }, React.createElement("span", null, label), React.createElement("b", null, brl(valor))),
-React.createElement("div", { className: "h-2.5 bg-[#121212] rounded-full overflow-hidden" },
-React.createElement("div", { className: "h-full bg-[#E50914] rounded-full transition-all duration-500", style: { width: ${pct}% } })
-)
-);
-}
-function Galeria({ itens }) {
-const [i, setI] = useState(0);
-const n = itens.length;
-const idx = Math.min(i, n - 1);
-const cur = itens[idx];
-useEffect(() => {
-if (!n || cur.tipo === "video") return;
-const t = setTimeout(() => setI((x) => (x + 1) % n), 4000);
-return () => clearTimeout(t);
-}, [idx, n, cur]);
-if (!n) return React.createElement("p", { className: "text-gray-500 text-sm mb-3" }, "Nenhuma foto cadastrada ainda.");
-const embedYT = (u) => {
-const m = u.match(/(?:youtu.be/|v=|shorts/)([\w-]{11})/);
-return m ? https://youtube.com{m} : null;
-};
-const yt = cur.tipo === "video" && embedYT(cur.src);
-const navClass = "absolute top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 flex items-center justify-center cursor-pointer text-white hover:bg-black/80";
-return React.createElement("div", { className: "relative mb-3 rounded-xl overflow-hidden bg-black aspect-[4/3]" },
-cur.tipo === "foto"
-? React.createElement("img", { src: cur.src, alt: "Corte Vidal Barber", className: "w-full h-full object-cover" })
-: yt
-? React.createElement("iframe", { src: yt, title: "Vídeo", className: "w-full h-full", allowFullScreen: true })
-: React.createElement("video", { src: cur.src, controls: true, playsInline: true, className: "w-full h-full object-cover" }),
-React.createElement("button", { onClick: () => setI((idx - 1 + n) % n), className: ${navClass} left-0 rounded-r-xl }, "‹"),
-React.createElement("button", { onClick: () => setI((idx + 1) % n), className: ${navClass} right-0 rounded-l-xl }, "›"),
-React.createElement("span", { className: "absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-black/60 px-2 py-0.5 rounded-full text-white" }, ${idx + 1}/${n})
-);
-}
-function Inicio({ selos, plano, galeria }) {
-const [i, setI] = useState(0);
-useEffect(() => {
-const t = setInterval(() => setI((x) => (x + 1) % AVALIACOES.length), 4000);
-return () => clearInterval(t);
-}, []);
-const maps = https://google.com{encodeURIComponent(ENDERECO)};
-return React.createElement(React.Fragment, null,
-plano && React.createElement(Card, { className: "border-[#E50914]/60 flex items-center gap-3" },
-React.createElement("div", { className: "text-[#E50914] text-xl" }, "👑"),
-React.createElement("div", null, React.createElement("b", null, "Assinante Ativo"), React.createElement("p", { className: "text-sm text-gray-400" }, plano.nome))
-),
-React.createElement(Card, null,
-React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-3 text-white" }, "Cartão Fidelidade"),
-React.createElement("div", { className: "grid grid-cols-5 gap-2" },
-Array.from({ length: 10 }, (_, k) => React.createElement("div", {
-key: k,
-className: aspect-square rounded-full flex items-center justify-center border-2 text-sm font-bold transition-all duration-300 ${k < selos ? "bg-[#E50914] border-[#E50914] shadow-[0_0_12px_#E50914aa] text-white" : "border-gray-700 text-gray-500"}
-}, k < selos ? "✂️" : k + 1))
-),
-React.createElement("p", { className: "text-sm text-gray-400 mt-3" }, selos >= 10 ? "🎉 Prêmio liberado! Mostre este cartão no balcão." : Faltam ${10 - selos} cortes para você ganhar um prêmio gratuito.)
-),
-React.createElement(Card, null,
-React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-2 text-white" }, "Fotos & Avaliações"),
-React.createElement(Galeria, { itens: galeria }),
-React.createElement("div", { className: "flex items-center gap-1 text-yellow-500 mb-1 text-sm font-bold" }, "⭐ ⭐ ⭐ ⭐ ⭐", React.createElement("span", { className: "text-gray-300 text-xs ml-2 font-normal" }, "5,0 de nota no Google")),
-React.createElement("p", { className: "text-gray-300 text-sm italic min-h-[48px]" }, “${AVALIACOES[i].t}”, React.createElement("span", { className: "text-gray-500 not-italic block mt-1 text-xs" }, — ${AVALIACOES[i].n}))
-),
-React.createElement(Card, { className: "space-y-3" },
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vidal Barber</title>
+  <script src="https://jsdelivr.net"></script>
+  <link rel="preconnect" href="https://googleapis.com">
+  <link rel="preconnect" href="https://gstatic.com" crossorigin>
+  <link href="https://googleapis.com/css2?family=Inter:wght@400;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com" crossorigin></script>
+  <script src="https://unpkg.com" crossorigin></script>
+  <script src="https://unpkg.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background-color: #121212; color: #f3f4f6; }
+    .font-oswald { font-family: 'Oswald', sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    const { useState, useEffect, useMemo } = React;
+
+    const WHATSAPP = "5561998486285";
+    const ENDERECO = "SHVP trecho 03, quadra 01, conjunto 03, lote 03, Av. Governador - Vicente Pires - DF, CEP: 72.001-208";
+    const HORARIO = "Seg a Sáb · 10h às 21h";
+    const ADMIN_PIN = "1234"; 
+
+    const SERV0 = [
+      { id: "corte", nome: "Corte masculino", preco: 40 },
+      { id: "barba", nome: "Barba", preco: 40 },
+      { id: "infantil", nome: "Corte infantil", preco: 40 },
+      { id: "feminino", nome: "Corte feminino", preco: 40, aPartir: true },
+      { id: "corte_barba", nome: "Corte + Barba", preco: 70 },
+      { id: "sobrancelha", nome: "Sobrancelhas", preco: 15 },
+      { id: "alisamento", nome: "Alisamento", preco: 55 },
+      { id: "progressiva", nome: "Progressiva", preco: 80 },
+      { id: "esfoliacao", nome: "Esfoliação", preco: 35 },
+    ];
+
+    const PLANOS = [
+      { id: "corte", nome: "Corte Ilimitado", preco: 120, inclui: ["corte", "infantil"] },
+      { id: "corte_barba", nome: "Corte e Barba Ilimitado", preco: 170, inclui: ["corte", "infantil", "barba", "corte_barba"] },
+    ];
+
+    const BARB0 = ["Vidal", "Rafael", "Diego"];
+    
+    const GALERIA0 = Array.from({ length: 15 }, (_, i) => ({ 
+      tipo: "foto", 
+      src: `https://unsplash.com`
+    }));
+
+    const HORAS = Array.from({ length: 11 }, (_, i) => `${10 + i}:00`); 
+    const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const AVALIACOES = [
+      { n: "Lucas M.", t: "Melhor degradê de Vicente Pires. Ambiente top!" },
+      { n: "Pedro H.", t: "Atendimento pontual e acabamento impecável." },
+      { n: "Gabriel S.", t: "O Clube Vidal compensa demais. Recomendo." },
+    ];
+
+    const brl = (v) => `R$ ${Number(v).toFixed(2).replace(".", ",")}`;
+    const uid = () => Math.random().toString(36).slice(2, 10);
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const fmtData = (s) => s.split("-").reverse().join("/");
+
+    function proximosDias(n = 12) {
+      const out = []; const d = new Date();
+      while (out.length < n) {
+        if (d.getDay() !== 0) out.push(new Date(d));
+        d.setDate(d.getDate() + 1);
+      }
+      return out;
+    }
+
+    function useLocal(key, init) {
+      const [v, setV] = useState(() => {
+        try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : init; } catch { return init; }
+      });
+      useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }, [key, v]);
+      return [v, setV];
+    }
+
+    const Btn = ({ className = "", ...p }) => React.createElement("button", { ...p, className: `min-h-[48px] px-5 rounded-xl font-semibold transition cursor-pointer active:scale-95 disabled:opacity-40 select-none ${className}` });
+    const Primary = (p) => React.createElement(Btn, { ...p, className: `bg-[#E50914] text-white hover:bg-red-700 ${p.className || ""}` });
+    const Ghost = (p) => React.createElement(Btn, { ...p, className: `bg-[#2a2a2a] text-gray-100 hover:bg-[#333] ${p.className || ""}` });
+    const Card = ({ className = "", ...p }) => React.createElement("div", { ...p, className: `bg-[#1E1E1E] rounded-2xl p-4 border border-white/5 ${className}` });
+    
+    const Modal = ({ children, onClose }) => React.createElement("div", { className: "fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" }, 
+      React.createElement("div", { className: "bg-[#1E1E1E] w-full max-w-md rounded-2xl p-5 relative border border-white/10" }, 
+        React.createElement("button", { onClick: onClose, className: "absolute top-2 right-2 w-12 h-12 flex items-center justify-center text-gray-400 cursor-pointer" }, "✕"),
+        children
+      )
+    );
+
+    function Bar({ label, valor, max }) {
+      const pct = max ? (valor / max) * 100 : 0;
+      return React.createElement("div", { className: "mb-3" },
+        React.createElement("div", { className: "flex justify-between text-sm mb-1" }, React.createElement("span", null, label), React.createElement("b", null, brl(valor))),
+        React.createElement("div", { className: "h-2.5 bg-[#121212] rounded-full overflow-hidden" }, 
+          React.createElement("div", { className: "h-full bg-[#E50914] rounded-full transition-all duration-500", style: { width: `${pct}%` } })
+        )
+      );
+    }
+
+    function Galeria({ itens }) {
+      const [i, setI] = useState(0);
+      const n = itens.length; 
+      const idx = Math.min(i, n - 1); 
+      const cur = itens[idx];
+
+      useEffect(() => {
+        if (!n || cur.tipo === "video") return;
+        const t = setTimeout(() => setI((x) => (x + 1) % n), 4000);
+        return () => clearTimeout(t);
+      }, [idx, n, cur]);
+
+      if (!n) return React.createElement("p", { className: "text-gray-500 text-sm mb-3" }, "Nenhuma foto cadastrada ainda.");
+      
+      const embedYT = (u) => { 
+        const m = u.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/); 
+        return m ? `https://youtube.com{m[1]}` : null; 
+      };
+      
+      const yt = cur.tipo === "video" && embedYT(cur.src);
+      const navClass = "absolute top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 flex items-center justify-center cursor-pointer text-white hover:bg-black/80";
+
+      return React.createElement("div", { className: "relative mb-3 rounded-xl overflow-hidden bg-black aspect-[4/3]" },
+        cur.tipo === "foto" 
+          ? React.createElement("img", { src: cur.src, alt: "Corte Vidal Barber", className: "w-full h-full object-cover" })
+          : yt 
+            ? React.createElement("iframe", { src: yt, title: "Vídeo", className: "w-full h-full", allowFullScreen: true })
+            : React.createElement("video", { src: cur.src, controls: true, playsInline: true, className: "w-full h-full object-cover" }),
+        React.createElement("button", { onClick: () => setI((idx - 1 + n) % n), className: `${navClass} left-0 rounded-r-xl` }, "‹"),
+        React.createElement("button", { onClick: () => setI((idx + 1) % n), className: `${navClass} right-0 rounded-l-xl` }, "›"),
+        React.createElement("span", { className: "absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-black/60 px-2 py-0.5 rounded-full text-white" }, `${idx + 1}/${n}`)
+      );
+    }
+
+    function Inicio({ selos, plano, galeria }) {
+      const [i, setI] = useState(0);
+      useEffect(() => { 
+        const t = setInterval(() => setI((x) => (x + 1) % AVALIACOES.length), 4000); 
+        return () => clearInterval(t); 
+      }, []);
+
+      const maps = `https://google.com{encodeURIComponent(ENDERECO)}`;
+      
+      return React.createElement(React.Fragment, null,
+        plano && React.createElement(Card, { className: "border-[#E50914]/60 flex items-center gap-3" }, 
+          React.createElement("div", { className: "text-[#E50914] text-xl" }, "👑"),
+          React.createElement("div", null, React.createElement("b", null, "Assinante Ativo"), React.createElement("p", { className: "text-sm text-gray-400" }, plano.nome))
+        ),
+        React.createElement(Card, null,
+          React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-3 text-white" }, "Cartão Fidelidade"),
+          React.createElement("div", { className: "grid grid-cols-5 gap-2" },
+            Array.from({ length: 10 }, (_, k) => React.createElement("div", { 
+              key: k, 
+              className: `aspect-square rounded-full flex items-center justify-center border-2 text-sm font-bold transition-all duration-300 ${k < selos ? "bg-[#E50914] border-[#E50914] shadow-[0_0_12px_#E50914aa] text-white" : "border-gray-700 text-gray-500"}`
+            }, k < selos ? "✂️" : k + 1))
+          ),
+          React.createElement("p", { className: "text-sm text-gray-400 mt-3" }, selos >= 10 ? "🎉 Prêmio liberado! Mostre este cartão no balcão." : `Faltam ${10 - selos} cortes para você ganhar um prêmio gratuito.`)
+        ),
+        React.createElement(Card, null,
+          React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-2 text-white" }, "Fotos & Avaliações"),
+          React.createElement(Galeria, { itens: galeria }),
+          React.createElement("div", { className: "flex items-center gap-1 text-yellow-500 mb-1 text-sm font-bold" }, "⭐ ⭐ ⭐ ⭐ ⭐", React.createElement("span", { className: "text-gray-300 text-xs ml-2 font-normal" }, "5,0 de nota no Google")),
+          React.createElement("p", { className: "text-gray-300 text-sm italic min-h-[48px]" }, `“${AVALIACOES[i].t}”`, React.createElement("span", { className: "text-gray-500 not-italic block mt-1 text-xs" }, `— ${AVALIACOES[i].n}`))
+        ),
+        React.createElement(Card, { className: "space-y-3" },
 React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider text-white" }, "Localização & Contato"),
 React.createElement("p", { className: "text-gray-300 text-sm leading-relaxed" }, "📍 ", ENDERECO),
 React.createElement("div", { className: "grid grid-cols-1 gap-2 pt-1" },
@@ -147,7 +191,7 @@ React.createElement("div", null, React.createElement("span", { className: "text-
 React.createElement("div", { className: "text-right" }, React.createElement("span", { className: "text-2xl font-bold text-white" }, R$ ${p.preco}), React.createElement("span", { className: "text-gray-400 text-xs" }, "/mês"))
 ),
 React.createElement("ul", { className: "my-4 text-xs text-gray-300 space-y-1.5" },
-p.includes ? p.inclui.map((id) => React.createElement("li", { key: id, className: "flex items-center gap-2" }, React.createElement("span", { className: "text-[#E50914] font-bold" }, "✓"), ${sv(id).nome} Ilimitado)) : null
+p.inclui ? p.inclui.map((id) => React.createElement("li", { key: id, className: "flex items-center gap-2" }, React.createElement("span", { className: "text-[#E50914] font-bold" }, "✓"), ${sv(id).nome} Ilimitado)) : null
 ),
 plano?.id === p.id
 ? React.createElement("div", { className: "min-h-[48px] flex items-center justify-center text-[#E50914] font-bold text-sm bg-red-950/20 rounded-xl" }, "Sua Assinatura está Ativa")
