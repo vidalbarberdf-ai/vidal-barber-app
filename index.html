@@ -1,174 +1,453 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vidal Barber</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://jsdelivr.net"></script>
-  <!-- Google Fonts: Oswald e Inter -->
-  <link rel="preconnect" href="https://googleapis.com">
-  <link rel="preconnect" href="https://gstatic.com" crossorigin>
-  <link href="https://googleapis.com/css2?family=Inter:wght@400;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-  <!-- React e Lucide Icons via CDN -->
-  <script src="https://unpkg.com" crossorigin></script>
-  <script src="https://unpkg.com" crossorigin></script>
-  <script src="https://unpkg.com"></script>
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; background-color: #121212; color: #f3f4f6; }
-    .font-oswald { font-family: 'Oswald', sans-serif; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-
-  <script>
-    const { useState, useEffect, useMemo } = React;
-
-    /* ============ DADOS E CONSTANTES DO ESTABELECIMENTO ============ */
-    const WHATSAPP = "5561998486285";
-    const ENDERECO = "SHVP trecho 03, quadra 01, conjunto 03, lote 03, Av. Governador - Vicente Pires - DF, CEP: 72.001-208";
-    const HORARIO = "Seg a Sáb · 10h às 21h";
-    const ADMIN_PIN = "1234"; 
-
-    const SERV0 = [
-      { id: "corte", nome: "Corte masculino", preco: 40 },
-      { id: "barba", nome: "Barba", preco: 40 },
-      { id: "infantil", nome: "Corte infantil", preco: 40 },
-      { id: "feminino", nome: "Corte feminino", preco: 40, aPartir: true },
-      { id: "corte_barba", nome: "Corte + Barba", preco: 70 },
-      { id: "sobrancelha", nome: "Sobrancelhas", preco: 15 },
-      { id: "alisamento", nome: "Alisamento", preco: 55 },
-      { id: "progressiva", nome: "Progressiva", preco: 80 },
-      { id: "esfoliacao", nome: "Esfoliação", preco: 35 },
-    ];
-
-    const PLANOS = [
-      { id: "corte", nome: "Corte Ilimitado", preco: 120, inclui: ["corte", "infantil"] },
-      { id: "corte_barba", nome: "Corte e Barba Ilimitado", preco: 170, inclui: ["corte", "infantil", "barba", "corte_barba"] },
-    ];
-
-    const BARB0 = ["Vidal", "Rafael", "Diego"];
-    
-    const GALERIA0 = Array.from({ length: 15 }, (_, i) => ({ 
-      tipo: "foto", 
-      src: `https://unsplash.com`
-    }));
-
-    const HORAS = Array.from({ length: 11 }, (_, i) => `${10 + i}:00`); 
-    const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    const AVALIACOES = [
-      { n: "Lucas M.", t: "Melhor degradê de Vicente Pires. Ambiente top!" },
-      { n: "Pedro H.", t: "Atendimento pontual e acabamento impecável." },
-      { n: "Gabriel S.", t: "O Clube Vidal compensa demais. Recomendo." },
-    ];
-
-    const brl = (v) => `R$ ${Number(v).toFixed(2).replace(".", ",")}`;
-    const uid = () => Math.random().toString(36).slice(2, 10);
-    const iso = (d) => d.toISOString().slice(0, 10);
-    const fmtData = (s) => s.split("-").reverse().join("/");
-
-    function proximosDias(n = 12) {
-      const out = []; const d = new Date();
-      while (out.length < n) {
-        if (d.getDay() !== 0) out.push(new Date(d));
-        d.setDate(d.getDate() + 1);
-      }
-      return out;
-    }
-
-    function useLocal(key, init) {
-      const [v, setV] = useState(() => {
-        try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : init; } catch { return init; }
-      });
-      useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }, [key, v]);
-      return [v, setV];
-    }
-
-    /* ============ COMPONENTES GENÉRICOS DE INTERFACE REUTILIZÁVEIS ============ */
-    const Btn = ({ className = "", ...p }) => React.createElement("button", { ...p, className: `min-h-[48px] px-5 rounded-xl font-semibold transition cursor-pointer active:scale-95 disabled:opacity-40 select-none ${className}` });
-    const Primary = (p) => React.createElement(Btn, { ...p, className: `bg-[#E50914] text-white hover:bg-red-700 ${p.className || ""}` });
-    const Ghost = (p) => React.createElement(Btn, { ...p, className: `bg-[#2a2a2a] text-gray-100 hover:bg-[#333] ${p.className || ""}` });
-    const Card = ({ className = "", ...p }) => React.createElement("div", { ...p, className: `bg-[#1E1E1E] rounded-2xl p-4 border border-white/5 ${className}` });
-    
-    const Modal = ({ children, onClose }) => React.createElement("div", { className: "fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" }, 
-      React.createElement("div", { className: "bg-[#1E1E1E] w-full max-w-md rounded-2xl p-5 relative border border-white/10" }, 
-        React.createElement("button", { onClick: onClose, className: "absolute top-2 right-2 w-12 h-12 flex items-center justify-center text-gray-400 cursor-pointer" }, "✕"),
-        children
-      )
-    );
-
-    function Bar({ label, valor, max }) {
-      const pct = max ? (valor / max) * 100 : 0;
-      return React.createElement("div", { className: "mb-3" },
-        React.createElement("div", { className: "flex justify-between text-sm mb-1" }, React.createElement("span", null, label), React.createElement("b", null, brl(valor))),
-        React.createElement("div", { className: "h-2.5 bg-[#121212] rounded-full overflow-hidden" }, 
-          React.createElement("div", { className: "h-full bg-[#E50914] rounded-full transition-all duration-500", style: { width: `${pct}%` } })
-        )
-      );
-    }
-
-    function Galeria({ itens }) {
-      const [i, setI] = useState(0);
-      const n = itens.length; 
-      const idx = Math.min(i, n - 1); 
-      const cur = itens[idx];
-
-      useEffect(() => {
-        if (!n || cur.tipo === "video") return;
-        const t = setTimeout(() => setI((x) => (x + 1) % n), 4000);
-        return () => clearTimeout(t);
-      }, [idx, n, cur]);
-
-      if (!n) return React.createElement("p", { className: "text-gray-500 text-sm mb-3" }, "Nenhuma foto cadastrada ainda.");
-      
-      const embedYT = (u) => { 
-        const m = u.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/); 
-        return m ? `https://youtube.com{m[1]}` : null; 
-      };
-      
-      const yt = cur.tipo === "video" && embedYT(cur.src);
-      const navClass = "absolute top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 flex items-center justify-center cursor-pointer text-white hover:bg-black/80";
-
-      return React.createElement("div", { className: "relative mb-3 rounded-xl overflow-hidden bg-black aspect-[4/3]" },
-        cur.tipo === "foto" 
-          ? React.createElement("img", { src: cur.src, alt: "Corte Vidal Barber", className: "w-full h-full object-cover" })
-          : yt 
-            ? React.createElement("iframe", { src: yt, title: "Vídeo", className: "w-full h-full", allowFullScreen: true })
-            : React.createElement("video", { src: cur.src, controls: true, playsInline: true, className: "w-full h-full object-cover" }),
-        React.createElement("button", { onClick: () => setI((idx - 1 + n) % n), className: `${navClass} left-0 rounded-r-xl` }, "‹"),
-        React.createElement("button", { onClick: () => setI((idx + 1) % n), className: `${navClass} right-0 rounded-l-xl` }, "›"),
-        React.createElement("span", { className: "absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-black/60 px-2 py-0.5 rounded-full text-white" }, `${idx + 1}/${n}`)
-      );
-    }
-
-    function Inicio({ selos, plano, galeria }) {
-      const [i, setI] = useState(0);
-      useEffect(() => { 
-        const t = setInterval(() => setI((x) => (x + 1) % AVALIACOES.length), 4000); 
-        return () => clearInterval(t); 
-      }, []);
-
-      const maps = `https://google.com{encodeURIComponent(ENDERECO)}`;
-      
-      return React.createElement(React.Fragment, null,
-        plano && React.createElement(Card, { className: "border-[#E50914]/60 flex items-center gap-3" }, 
-          React.createElement("div", { className: "text-[#E50914] text-xl" }, "👑"),
-          React.createElement("div", null, React.createElement("b", null, "Assinante Ativo"), React.createElement("p", { className: "text-sm text-gray-400" }, plano.nome))
-        ),
-        React.createElement(Card, null,
-          React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-3 text-white" }, "Cartão Fidelidade"),
-          React.createElement("div", { className: "grid grid-cols-5 gap-2" },
-            Array.from({ length: 10 }, (_, k) => React.createElement("div", { 
-              key: k, 
-              className: `aspect-square rounded-full flex items-center justify-center border-2 text-sm font-bold transition-all duration-300 ${k < selos ? "bg-[#E50914] border-[#E50914] shadow-[0_0_12px_#E50914aa] text-white" : "border-gray-700 text-gray-500"}`
-            }, k < selos ? "✂️" : k + 1))
-          ),
-          React.createElement("p", { className: "text-sm text-gray-400 mt-3" }, selos >= 10 ? "🎉 Prêmio liberado! Mostre este cartão no balcão." : `Faltam ${10 - selos} cortes para você ganhar um prêmio gratuito.`)
-        ),
-        React.createElement(Card, null,
-          React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-2 text-white" }, "Fotos & Avaliações"),
-          React.createElement(Galeria, { itens: galeria }),
-          React.createElement("div", { className: "flex items-center gap-1 text-yellow-500 mb-1 text-sm font-bold" }, "⭐ ⭐ ⭐ ⭐ ⭐", React.createElement("span", { className: "text-gray-300 text-xs ml-2 font-normal" }, "5,0 de nota no Google")),
+Vidal Barber
+const { useState, useEffect, useMemo } = React;
+const WHATSAPP = "5561998486285";
+const ENDERECO = "SHVP trecho 03, quadra 01, conjunto 03, lote 03, Av. Governador - Vicente Pires - DF, CEP: 72.001-208";
+const HORARIO = "Seg a Sáb · 10h às 21h";
+const ADMIN_PIN = "1234";
+const SERV0 = [
+{ id: "corte", nome: "Corte masculino", preco: 40 },
+{ id: "barba", nome: "Barba", preco: 40 },
+{ id: "infantil", nome: "Corte infantil", preco: 40 },
+{ id: "feminino", nome: "Corte feminino", preco: 40, aPartir: true },
+{ id: "corte_barba", nome: "Corte + Barba", preco: 70 },
+{ id: "sobrancelha", nome: "Sobrancelhas", preco: 15 },
+{ id: "alisamento", nome: "Alisamento", preco: 55 },
+{ id: "progressiva", nome: "Progressiva", preco: 80 },
+{ id: "esfoliacao", nome: "Esfoliação", preco: 35 },
+];
+const PLANOS = [
+{ id: "corte", nome: "Corte Ilimitado", preco: 120, inclui: ["corte", "infantil"] },
+{ id: "corte_barba", nome: "Corte e Barba Ilimitado", preco: 170, inclui: ["corte", "infantil", "barba", "corte_barba"] },
+];
+const BARB0 = ["Vidal", "Rafael", "Diego"];
+const GALERIA0 = Array.from({ length: 15 }, (_, i) => ({
+tipo: "foto",
+src: https://unsplash.com
+}));
+const HORAS = Array.from({ length: 11 }, (_, i) => ${10 + i}:00);
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const AVALIACOES = [
+{ n: "Lucas M.", t: "Melhor degradê de Vicente Pires. Ambiente top!" },
+{ n: "Pedro H.", t: "Atendimento pontual e acabamento impecável." },
+{ n: "Gabriel S.", t: "O Clube Vidal compensa demais. Recomendo." },
+];
+const brl = (v) => R$ ${Number(v).toFixed(2).replace(".", ",")};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const iso = (d) => d.toISOString().slice(0, 10);
+const fmtData = (s) => s.split("-").reverse().join("/");
+function proximosDias(n = 12) {
+const out = []; const d = new Date();
+while (out.length < n) {
+if (d.getDay() !== 0) out.push(new Date(d));
+d.setDate(d.getDate() + 1);
+}
+return out;
+}
+function useLocal(key, init) {
+const [v, setV] = useState(() => {
+try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : init; } catch { return init; }
+});
+useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }, [key, v]);
+return [v, setV];
+}
+const Btn = ({ className = "", ...p }) => React.createElement("button", { ...p, className: min-h-[48px] px-5 rounded-xl font-semibold transition cursor-pointer active:scale-95 disabled:opacity-40 select-none ${className} });
+const Primary = (p) => React.createElement(Btn, { ...p, className: bg-[#E50914] text-white hover:bg-red-700 ${p.className || ""} });
+const Ghost = (p) => React.createElement(Btn, { ...p, className: bg-[#2a2a2a] text-gray-100 hover:bg-[#333] ${p.className || ""} });
+const Card = ({ className = "", ...p }) => React.createElement("div", { ...p, className: bg-[#1E1E1E] rounded-2xl p-4 border border-white/5 ${className} });
+const Modal = ({ children, onClose }) => React.createElement("div", { className: "fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" },
+React.createElement("div", { className: "bg-[#1E1E1E] w-full max-w-md rounded-2xl p-5 relative border border-white/10" },
+React.createElement("button", { onClick: onClose, className: "absolute top-2 right-2 w-12 h-12 flex items-center justify-center text-gray-400 cursor-pointer" }, "✕"),
+children
+)
+);
+function Bar({ label, valor, max }) {
+const pct = max ? (valor / max) * 100 : 0;
+return React.createElement("div", { className: "mb-3" },
+React.createElement("div", { className: "flex justify-between text-sm mb-1" }, React.createElement("span", null, label), React.createElement("b", null, brl(valor))),
+React.createElement("div", { className: "h-2.5 bg-[#121212] rounded-full overflow-hidden" },
+React.createElement("div", { className: "h-full bg-[#E50914] rounded-full transition-all duration-500", style: { width: ${pct}% } })
+)
+);
+}
+function Galeria({ itens }) {
+const [i, setI] = useState(0);
+const n = itens.length;
+const idx = Math.min(i, n - 1);
+const cur = itens[idx];
+useEffect(() => {
+if (!n || cur.tipo === "video") return;
+const t = setTimeout(() => setI((x) => (x + 1) % n), 4000);
+return () => clearTimeout(t);
+}, [idx, n, cur]);
+if (!n) return React.createElement("p", { className: "text-gray-500 text-sm mb-3" }, "Nenhuma foto cadastrada ainda.");
+const embedYT = (u) => {
+const m = u.match(/(?:youtu.be/|v=|shorts/)([\w-]{11})/);
+return m ? https://youtube.com{m} : null;
+};
+const yt = cur.tipo === "video" && embedYT(cur.src);
+const navClass = "absolute top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 flex items-center justify-center cursor-pointer text-white hover:bg-black/80";
+return React.createElement("div", { className: "relative mb-3 rounded-xl overflow-hidden bg-black aspect-[4/3]" },
+cur.tipo === "foto"
+? React.createElement("img", { src: cur.src, alt: "Corte Vidal Barber", className: "w-full h-full object-cover" })
+: yt
+? React.createElement("iframe", { src: yt, title: "Vídeo", className: "w-full h-full", allowFullScreen: true })
+: React.createElement("video", { src: cur.src, controls: true, playsInline: true, className: "w-full h-full object-cover" }),
+React.createElement("button", { onClick: () => setI((idx - 1 + n) % n), className: ${navClass} left-0 rounded-r-xl }, "‹"),
+React.createElement("button", { onClick: () => setI((idx + 1) % n), className: ${navClass} right-0 rounded-l-xl }, "›"),
+React.createElement("span", { className: "absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-black/60 px-2 py-0.5 rounded-full text-white" }, ${idx + 1}/${n})
+);
+}
+function Inicio({ selos, plano, galeria }) {
+const [i, setI] = useState(0);
+useEffect(() => {
+const t = setInterval(() => setI((x) => (x + 1) % AVALIACOES.length), 4000);
+return () => clearInterval(t);
+}, []);
+const maps = https://google.com{encodeURIComponent(ENDERECO)};
+return React.createElement(React.Fragment, null,
+plano && React.createElement(Card, { className: "border-[#E50914]/60 flex items-center gap-3" },
+React.createElement("div", { className: "text-[#E50914] text-xl" }, "👑"),
+React.createElement("div", null, React.createElement("b", null, "Assinante Ativo"), React.createElement("p", { className: "text-sm text-gray-400" }, plano.nome))
+),
+React.createElement(Card, null,
+React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-3 text-white" }, "Cartão Fidelidade"),
+React.createElement("div", { className: "grid grid-cols-5 gap-2" },
+Array.from({ length: 10 }, (_, k) => React.createElement("div", {
+key: k,
+className: aspect-square rounded-full flex items-center justify-center border-2 text-sm font-bold transition-all duration-300 ${k < selos ? "bg-[#E50914] border-[#E50914] shadow-[0_0_12px_#E50914aa] text-white" : "border-gray-700 text-gray-500"}
+}, k < selos ? "✂️" : k + 1))
+),
+React.createElement("p", { className: "text-sm text-gray-400 mt-3" }, selos >= 10 ? "🎉 Prêmio liberado! Mostre este cartão no balcão." : Faltam ${10 - selos} cortes para você ganhar um prêmio gratuito.)
+),
+React.createElement(Card, null,
+React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider mb-2 text-white" }, "Fotos & Avaliações"),
+React.createElement(Galeria, { itens: galeria }),
+React.createElement("div", { className: "flex items-center gap-1 text-yellow-500 mb-1 text-sm font-bold" }, "⭐ ⭐ ⭐ ⭐ ⭐", React.createElement("span", { className: "text-gray-300 text-xs ml-2 font-normal" }, "5,0 de nota no Google")),
+React.createElement("p", { className: "text-gray-300 text-sm italic min-h-[48px]" }, “${AVALIACOES[i].t}”, React.createElement("span", { className: "text-gray-500 not-italic block mt-1 text-xs" }, — ${AVALIACOES[i].n}))
+),
+React.createElement(Card, { className: "space-y-3" },
+React.createElement("h2", { className: "text-xl font-oswald uppercase tracking-wider text-white" }, "Localização & Contato"),
+React.createElement("p", { className: "text-gray-300 text-sm leading-relaxed" }, "📍 ", ENDERECO),
+React.createElement("div", { className: "grid grid-cols-1 gap-2 pt-1" },
+React.createElement("a", { href: maps, target: "_blank", rel: "noreferrer" }, React.createElement(Primary, { className: "w-full" }, "🗺️ Abrir Rota no Google Maps")),
+React.createElement("a", { href: https://wa.me{WHATSAPP}, target: "_blank", rel: "noreferrer" }, React.createElement(Ghost, { className: "w-full" }, "💬 Chamar no WhatsApp")),
+React.createElement("a", { href: "instagram.com", target: "_blank", rel: "noreferrer" }, React.createElement(Ghost, { className: "w-full" }, "📸 Siga nosso Instagram"))
+)
+)
+);
+}
+function Clube({ assin, plano, assinar, sv }) {
+const [pix, setPix] = useState(null);
+return React.createElement(React.Fragment, null,
+React.createElement("h2", { className: "text-2xl font-oswald uppercase text-white mb-2 tracking-wide" }, "Clube Vidal Barber"),
+PLANOS.map((p, k) => React.createElement(Card, { key: p.id, className: k === 1 ? "border-[#E50914] relative overflow-hidden shadow-lg shadow-red-950/20" : "" },
+k === 1 && React.createElement("span", { className: "absolute top-2 right-2 bg-[#E50914] text-[10px] uppercase font-bold px-2 py-0.5 rounded-full text-white" }, "Mais Vantajoso"),
+React.createElement("div", { className: "flex justify-between items-start" },
+React.createElement("div", null, React.createElement("span", { className: "text-[#E50914] text-lg block mb-1" }, "👑"), React.createElement("h3", { className: "text-lg font-bold text-white" }, p.nome)),
+React.createElement("div", { className: "text-right" }, React.createElement("span", { className: "text-2xl font-bold text-white" }, R$ ${p.preco}), React.createElement("span", { className: "text-gray-400 text-xs" }, "/mês"))
+),
+React.createElement("ul", { className: "my-4 text-xs text-gray-300 space-y-1.5" },
+p.includes ? p.inclui.map((id) => React.createElement("li", { key: id, className: "flex items-center gap-2" }, React.createElement("span", { className: "text-[#E50914] font-bold" }, "✓"), ${sv(id).nome} Ilimitado)) : null
+),
+plano?.id === p.id
+? React.createElement("div", { className: "min-h-[48px] flex items-center justify-center text-[#E50914] font-bold text-sm bg-red-950/20 rounded-xl" }, "Sua Assinatura está Ativa")
+: React.createElement(Primary, { className: "w-full text-sm", onClick: () => setPix(p) }, "Assinar Plano Mensal")
+)),
+pix && React.createElement(Modal, { onClose: () => setPix(null) },
+React.createElement("h3", { className: "text-lg font-bold mb-3 text-white" }, "Pagamento da Assinatura"),
+React.createElement("div", { className: "bg-white rounded-xl p-4 flex flex-col items-center justify-center mb-3 w-40 mx-auto aspect-square border-4 border-[#E50914]" },
+React.createElement("span", { className: "text-black text-6xl" }, "📱"),
+React.createElement("span", { className: "text-black font-bold text-[10px] mt-2 uppercase tracking-widest" }, "QR CODE PIX")
+),
+React.createElement("p", { className: "text-center text-sm mb-1 text-gray-200" }, "Valor Total: ", React.createElement("b", { className: "text-[#E50914]" }, brl(pix.preco))),
+React.createElement("p", { className: "text-center text-[11px] text-gray-500 mb-4" }, "Simulação de Gateway de Pagamento Seguro via Pix."),
+React.createElement(Primary, { className: "w-full", onClick: () => { assinar(pix); setPix(null); } }, "Confirmar Pagamento")
+)
+);
+}
+function Agendar({ plano, agend, onSave, sv, cfgBarbeiros, cfgServicos }) {
+const [passo, setPasso] = useState(1);
+const [sel, setSel] = useState([]);
+const [barb, setBarb] = useState(null);
+const [dia, setDia] = useState(null);
+const [hora, setHora] = useState(null);
+const [pgto, setPgto] = useState("local");
+const [pixModal, setPixModal] = useState(false);
+const [nome, setNome] = useState("");
+const dias = useMemo(() => proximosDias(), []);
+const precoFinal = (s) => (plano?.inclui && plano.inclui.includes(s.id) ? 0 : s.preco);
+const total = sel.reduce((t, id) => t + precoFinal(sv(id)), 0);
+const tabela = sel.reduce((t, id) => t + sv(id).preco, 0);
+const pularPagamento = total === 0 && plano;
+const ocupado = (h) => agend.some((a) => a.status === "agendado" && a.data === iso(dia) && a.hora === h && a.barbeiro === barb);
+const pico = dia && (dia.getDay() === 5 || dia.getDay() === 6);
+const realizarAgendamento = (pago) => onSave({
+id: uid(), cliente: nome.trim() || "Cliente Anônimo", servicos: sel, barbeiro: barb, data: iso(dia), hora,
+total, valorTabela: tabela, pagamento: pularPagamento ? "assinatura" : pgto, pago, status: "agendado"
+});
+return React.createElement("div", { className: "space-y-4" },
+React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+passo > 1 && React.createElement("button", { onClick: () => setPasso(passo - 1), className: "w-10 h-10 flex items-center justify-center bg-[#2a2a2a] rounded-xl cursor-pointer" }, "‹"),
+React.createElement("h2", { className: "text-xl font-oswald uppercase text-white tracking-wide" }, Agendamento · Passo ${passo} de 4)
+),
+passo === 1 && React.createElement(React.Fragment, null,
+cfgServicos.map((s) => {
+const ligado = sel.includes(s.id);
+const valorCalculado = precoFinal(s);
+return React.createElement("button", {
+key: s.id,
+onClick: () => setSel(ligado ? sel.filter((x) => x !== s.id) : [...sel, s.id]),
+className: w-full min-h-[56px] px-4 rounded-xl flex justify-between items-center border text-left cursor-pointer transition-all mb-2 ${ligado ? "border-[#E50914] bg-[#E50914]/10 text-white" : "border-white/5 bg-[#1E1E1E] text-gray-300"}
+},
+React.createElement("span", { className: "text-sm font-semibold" }, s.nome),
+React.createElement("span", { className: "text-sm font-bold" }, valorCalculado === 0 ? React.createElement("span", { className: "text-[#E50914]" }, "R$ 0 (Incluso)") : ${s.aPartir ? "a partir de " : ""}${brl(s.preco)})
+);
+}),
+React.createElement(Primary, { className: "w-full mt-2", disabled: !sel.length, onClick: () => setPasso(2) }, Avançar para Barbeiros · ${brl(total)})
+),
+passo === 2 && React.createElement(React.Fragment, null,
+cfgBarbeiros.map((b) => React.createElement("button", {
+key: b,
+onClick: () => { setBarb(b); setPasso(3); },
+className: "w-full min-h-[56px] px-4 rounded-xl bg-[#1E1E1E] border border-white/5 flex items-center gap-3 text-sm font-semibold text-gray-200 text-left cursor-pointer mb-2 hover:border-gray-700"
+}, "💈 ", b))
+),
+passo === 3 && React.createElement(React.Fragment, null,
+React.createElement("div", { className: "flex gap-2 overflow-x-auto pb-2 no-scrollbar" },
+dias.map((d) => React.createElement("button", {
+key: iso(d),
+onClick: () => { setDia(d); setHora(null); },
+className: min-w-[64px] min-h-[72px] rounded-xl flex flex-col items-center justify-center cursor-pointer transition ${dia && iso(dia) === iso(d) ? "bg-[#E50914] text-white" : "bg-[#1E1E1E] text-gray-400"}
+},
+React.createElement("span", { className: "text-[10px] uppercase font-bold" }, DIAS_SEMANA[d.getDay()]),
+React.createElement("b", { className: "text-base font-oswald" }, d.getDate()),
+(d.getDay() === 5 || d.getDay() === 6) && React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-[#E50914] ring-1 ring-white mt-0.5" })
+))
+),
+pico && React.createElement("div", { className: "bg-[#E50914]/20 border border-[#E50914] text-[#E50914] text-[11px] font-bold px-3 py-1.5 rounded-xl text-center" }, "⚠️ Horário de Pico Concorrido (Sexta/Sábado). Agende para garantir!"),
+dia && React.createElement("div", { className: "grid grid-cols-3 gap-2 mt-2" },
+HORAS.map((h) => React.createElement("button", {
+key: h,
+disabled: ocupado(h),
+onClick: () => setHora(h),
+className: min-h-[44px] rounded-xl text-xs font-semibold cursor-pointer border ${hora === h ? "bg-[#E50914] border-[#E50914] text-white" : "bg-[#1E1E1E] border-white/5 text-gray-300"} disabled:opacity-20 disabled:line-through disabled:cursor-not-allowed
+}, h))
+),
+React.createElement(Primary, { className: "w-full mt-4", disabled: !hora, onClick: () => setPasso(4) }, "Avançar para Identificação")
+),
+passo === 4 && React.createElement(React.Fragment, null,
+React.createElement("input", {
+value: nome,
+onChange: (e) => setNome(e.target.value),
+placeholder: "Digite seu nome completo",
+className: "w-full min-h-[48px] bg-[#1E1E1E] rounded-xl px-4 outline-none border border-white/10 text-white text-sm mb-2"
+}),
+pularPagamento
+? React.createElement(Card, { className: "text-[#E50914] bg-red-950/10 text-xs border-red-900/50 mb-2" }, "✓ Membro do Clube Vidal: Agendamento grátis debitado do saldo da sua assinatura.")
+: React.createElement("div", { className: "space-y-2 mb-2" },
+React.createElement("button", { onClick: () => setPgto("local"), className: w-full min-h-[52px] rounded-xl px-4 text-left text-xs font-semibold border cursor-pointer ${pgto === "local" ? "border-[#E50914] bg-[#E50914]/10" : "border-white/5 bg-[#1E1E1E]"} }, "💵 Pagar Presencialmente no Balcão (Local)"),
+React.createElement("button", { onClick: () => setPgto("pix"), className: w-full min-h-[52px] rounded-xl px-4 text-left text-xs font-semibold border cursor-pointer ${pgto === "pix" ? "border-[#E50914] bg-[#E50914]/10" : "border-white/5 bg-[#1E1E1E]"} }, "⚡ Pagar Antecipado via Chave PIX")
+),
+React.createElement(Card, { className: "text-xs text-gray-400 space-y-1 mb-2" },
+React.createElement("div", null, "💈 Serviços: ", React.createElement("b", { className: "text-white" }, sel.map((id) => sv(id).nome).join(", "))),
+React.createElement("div", null, "📅 Data: ", React.createElement("b", { className: "text-white" }, ${fmtData(iso(dia))} às ${hora})),
+React.createElement("div", null, "👤 Barbeiro: ", React.createElement("b", { className: "text-white" }, barb)),
+React.createElement("div", { className: "text-sm pt-1 border-t border-white/5 mt-1" }, "Total: ", React.createElement("b", { className: "text-[#E50914]" }, brl(total)))
+),
+React.createElement("p", { className: "text-[11px] text-yellow-600 font-sans" }, "🚨 Política de No-Show: Cancelamentos com menos de 2 horas podem bloquear novos agendamentos online."),
+React.createElement(Primary, { className: "w-full mt-2", disabled: !nome.trim(), onClick: () => (!pularPagamento && pgto === "pix" ? setPixModal(true) : realizarAgendamento(false)) }, "Confirmar e Agendar Horário"),
+pixModal && React.createElement(Modal, { onClose: () => setPixModal(false) },
+React.createElement("h3", { className: "text-lg font-bold mb-3 text-white" }, "Pagamento via PIX"),
+React.createElement("div", { className: "bg-white rounded-xl p-4 flex flex-col items-center justify-center mb-3 w-40 mx-auto aspect-square border-4 border-[#E50914]" },
+React.createElement("span", { className: "text-black text-6xl" }, "⚡"),
+React.createElement("span", { className: "text-black font-bold text-[10px] mt-2 uppercase tracking-widest" }, "PIX COPIA E COLA")
+),
+React.createElement("p", { className: "text-center text-sm mb-1 text-gray-200" }, "Valor: ", React.createElement("b", { className: "text-[#E50914]" }, brl(total))),
+React.createElement("p", { className: "text-center text-[10px] text-gray-500 mb-4" }, "Efetue a transferência fictícia para validar seu agendamento."),
+React.createElement(Primary, { className: "w-full", onClick: () => { realizarAgendamento(true); setPixModal(false); } }, "Concluir Pagamento")
+)
+)
+);
+}
+function Meus({ agend, cancelar, sv }) {
+const lista = [...agend].sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+if (!lista.length) return React.createElement(Card, { className: "text-gray-500 text-sm text-center" }, "Você não possui horários agendados neste celular.");
+return lista.map((a) => {
+const msg = encodeURIComponent(Olá, meu horário na Vidal Barber está confirmado para o dia ${fmtData(a.data)} às ${a.hora}!);
+return React.createElement(Card, { key: a.id, className: "space-y-2 mb-2 text-xs" },
+React.createElement("div", { className: "flex justify-between items-center" },
+React.createElement("b", { className: "text-sm text-white" }, ${fmtData(a.data)} às ${a.hora}),
+React.createElement("span", { className: text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${a.status === "agendado" ? "bg-green-900 text-green-200" : a.status === "concluido" ? "bg-blue-900 text-blue-200" : "bg-gray-800 text-gray-400"} }, a.status)
+),
+React.createElement("p", { className: "text-gray-400" }, Serviços: ${a.servicos.map((id) => sv(id).nome).join(", ")} · Barbeiro: ${a.barbeiro} · Valor: ${brl(a.total)}),
+a.status === "agendado" && React.createElement("div", { className: "grid grid-cols-2 gap-2 pt-1" },
+React.createElement("a", { href: https://wa.me{WHATSAPP}?text=${msg}, target: "_blank", rel: "noreferrer" }, React.createElement(Ghost, { className: "w-full text-[11px] min-h-[38px]" }, "💬 Confirmar por Whats")),
+React.createElement(Ghost, { className: "text-[11px] min-h-[38px] text-red-400 border border-red-950/20", onClick: () => cancelar(a.id) }, "Desmarcar")
+)
+);
+});
+}
+function Editar({ cfg, setCfg }) {
+const [nb, setNb] = useState("");
+const set = (k, v) => setCfg({ ...cfg, [k]: v });
+const upd = (id, k, v) => set("servicos", cfg.servicos.map((s) => (s.id === id ? { ...s, [k]: v } : s)));
+const inputStyle = "min-h-[44px] bg-[#121212] rounded-xl px-3 outline-none text-white text-xs border border-white/5";
+return React.createElement(React.Fragment, null,
+React.createElement(Card, { className: "space-y-2" },
+React.createElement("h3", { className: "text-sm font-bold text-white uppercase font-oswald tracking-wider" }, "Ajustar Preços e Serviços"),
+cfg.servicos.map((s) => React.createElement("div", { key: s.id, className: "flex gap-2 items-center mb-1" },
+React.createElement("input", { value: s.nome, onChange: (e) => upd(s.id, "nome", e.target.value), className: ${inputStyle} flex-1 }),
+React.createElement("input", { type: "number", value: s.preco, onChange: (e) => upd(s.id, "preco", Number(e.target.value)), className: ${inputStyle} w-16 text-center }),
+React.createElement("button", { onClick: () => set("servicos", cfg.servicos.filter((x) => x.id !== s.id)), className: "w-10 h-10 flex items-center justify-center text-red-500 bg-red-950/20 rounded-xl cursor-pointer" }, "✕")
+)),
+React.createElement(Ghost, { className: "w-full text-xs min-h-[40px] mt-2", onClick: () => set("servicos", [...cfg.servicos, { id: uid(), nome: "Novo Serviço", preco: 0 }]) }, "＋ Adicionar Novo Serviço")
+),
+React.createElement(Card, { className: "space-y-2 mt-2" },
+React.createElement("h3", { className: "text-sm font-bold text-white uppercase font-oswald tracking-wider" }, "Lista de Barbeiros"),
+cfg.barbeiros.map((b, idx) => React.createElement("div", { key: idx, className: "flex gap-2 items-center mb-1" },
+React.createElement("input", { value: b, onChange: (e) => set("barbeiros", cfg.barbeiros.map((x, j) => (j === idx ? e.target.value : x))), className: ${inputStyle} flex-1 }),
+React.createElement("button", { onClick: () => set("barbeiros", cfg.barbeiros.filter((_, j) => j !== idx)), className: "w-10 h-10 flex items-center justify-center text-red-500 bg-red-950/20 rounded-xl cursor-pointer" }, "✕")
+)),
+React.createElement("div", { className: "flex gap-2 mt-2" },
+React.createElement("input", { value: nb, onChange: (e) => setNb(e.target.value), placeholder: "Nome do Barbeiro", className: ${inputStyle} flex-1 }),
+React.createElement(Primary, { className: "min-h-[44px]", disabled: !nb.trim(), onClick: () => { set("barbeiros", [...cfg.barbeiros, nb.trim()]); setNb(""); } }, "＋")
+)
+)
+);
+}
+function Admin({ agend, concluir, cancelar, despesas, setDespesas, entradas, sair, cfg, setCfg, sv }) {
+const [sub, setSub] = useState("agenda");
+const [f, setF] = useState({ desc: "", valor: "", cat: "Aluguel" });
+const bruto = entradas.reduce((t, e) => t + e.valor, 0);
+const saidas = despesas.reduce((t, d) => t + d.valor, 0);
+const servsCount = entradas.filter((e) => e.origem?.startsWith("Serviço")).length;
+const ticketMedio = servsCount ? entradas.filter((e) => e.origem?.startsWith("Serviço")).reduce((t, e) => t + (e.valor || e.ref || 0), 0) / servsCount : 0;
+const recorrente = entradas.filter((e) => e.metodo === "assinatura").reduce((t, e) => t + e.valor, 0);
+const porMetodo = (m) => entradas.filter((e) => e.metodo === m).reduce((t, e) => t + (m === "saldo" ? e.ref || 0 : e.valor), 0);
+const metodos = [["Pix Antecipado", porMetodo("pix")], ["No Local", porMetodo("local")], ["Saldo de Assinatura", porMetodo("saldo")]];
+const porBarb = cfg.barbeiros.map((b) => [b, entradas.filter((e) => e.barbeiro === b).reduce((t, e) => t + (e.valor || e.ref || 0), 0)]);
+const diasAgendados = [...new Set(agend.map((a) => a.data))].sort();
+return React.createElement("div", { className: "space-y-4" },
+React.createElement("div", { className: "flex justify-between items-center border-b border-white/5 pb-2" },
+React.createElement("h2", { className: "text-lg font-oswald uppercase text-white tracking-wider" }, "⚙️ Gestão Vidal Barber"),
+React.createElement(Ghost, { className: "min-h-[36px] px-3 text-xs", onClick: sair }, "Bloquear")
+),
+React.createElement("div", { className: "grid grid-cols-4 gap-1 text-[11px] font-bold" },
+[["agenda", "Agenda"], ["caixa", "Finanças"], ["relatorios", "Gráficos"], ["editar", "Config"]].map(([k, lbl]) => React.createElement("button", {
+key: k,
+onClick: () => setSub(k),
+className: min-h-[38px] rounded-xl cursor-pointer ${sub === k ? "bg-[#E50914] text-white" : "bg-[#1E1E1E] text-gray-400"}
+}, lbl))
+),
+sub === "agenda" && (diasAgendados.length ? diasAgendados.map((d) => React.createElement("div", { key: d, className: "mt-3" },
+React.createElement("h3", { className: "text-xs font-bold text-gray-500 mb-1 pl-1" }, fmtData(d)),
+agend.filter((a) => a.data === d).sort((a, b) => a.hora.localeCompare(b.hora)).map((a) => React.createElement(Card, { key: a.id, className: "mb-2 text-xs" },
+React.createElement("div", { className: "flex justify-between font-bold" }, React.createElement("span", { className: "text-white" }, ${a.hora} - ${a.cliente}), React.createElement("span", { className: "text-gray-400" }, a.status)),
+React.createElement("p", { className: "text-gray-400 mt-1" }, ${a.servicos.map((id) => sv(id).nome).join(", ")} · ${a.barbeiro} · ${brl(a.total)}),
+a.status === "agendado" && React.createElement("div", { className: "grid grid-cols-2 gap-2 mt-2" },
+React.createElement(Primary, { className: "min-h-[36px] text-[11px]", onClick: () => concluir(a) }, "Concluir"),
+React.createElement(Ghost, { className: "min-h-[36px] text-[11px] text-gray-400", onClick: () => cancelar(a.id) }, "Falta / Cancelar")
+)
+))
+)) : React.createElement(Card, { className: "text-center text-gray-500 text-xs mt-3" }, "Nenhum horário marcado no banco de dados.")),
+sub === "caixa" && React.createElement(React.Fragment, null,
+React.createElement(Card, { className: "space-y-2 mt-2" },
+React.createElement("h3", { className: "text-xs font-bold text-white uppercase" }, "Lançar Nova Despesa (Saída)"),
+React.createElement("input", { value: f.desc, onChange: (e) => setF({ ...f, desc: e.target.value }), placeholder: "Insumos, Luz, Aluguel...", className: "w-full min-h-[42px] bg-[#121212] rounded-xl px-3 outline-none text-xs border border-white/5" }),
+React.createElement("input", { value: f.valor, onChange: (e) => setF({ ...f, valor: e.target.value }), type: "number", placeholder: "Valor em R$", className: "w-full min-h-[42px] bg-[#121212] rounded-xl px-3 outline-none text-xs border border-white/5" }),
+React.createElement("select", { value: f.cat, onChange: (e) => setF({ ...f, cat: e.target.value }), className: "w-full min-h-[42px] bg-[#121212] rounded-xl px-3 text-xs border border-white/5 text-gray-300" },
+["Aluguel", "Produtos", "Contas", "Outros"].map((c) => React.createElement("option", { key: c }, c))
+),
+React.createElement(Primary, { className: "w-full min-h-[42px] text-xs", disabled: !f.desc || !(Number(f.valor) > 0), onClick: () => { setDespesas([...despesas, { id: uid(), desc: f.desc, valor: Number(f.valor), cat: f.cat, data: iso(new Date()) }]); setF({ desc: "", valor: "", cat: "Aluguel" }); } }, "＋ Salvar Despesa")
+),
+despesas.map((d) => React.createElement(Card, { key: d.id, className: "flex justify-between items-center text-xs mt-2" },
+React.createElement("div", null, React.createElement("b", { className: "text-white" }, d.desc), React.createElement("p", { className: "text-[10px] text-gray-500" }, ${d.cat} · ${fmtData(d.data)})),
+React.createElement("div", { className: "flex items-center gap-2" }, React.createElement("span", { className: "text-red-500 font-bold" }, -${brl(d.valor)}), React.createElement("button", { onClick: () => setDespesas(despesas.filter((x) => x.id !== d.id)), className: "text-gray-500 hover:text-white cursor-pointer px-2" }, "✕"))
+))
+),
+sub === "editar" && React.createElement("div", { className: "mt-2" }, React.createElement(Editar, { cfg: cfg, setCfg: setCfg })),
+sub === "relatorios" && React.createElement(React.Fragment, null,
+React.createElement("div", { className: "grid grid-cols-1 gap-2 mt-2" },
+React.createElement(Card, null, React.createElement("p", { className: "text-[11px] text-gray-400 uppercase font-semibold" }, "Faturamento Bruto"), React.createElement("p", { className: "text-2xl font-bold font-oswald text-white" }, brl(bruto))),
+React.createElement(Card, null, React.createElement("p", { className: "text-[11px] text-gray-400 uppercase font-semibold" }, "Total de Custos Operacionais"), React.createElement("p", { className: "text-2xl font-bold font-oswald text-red-500" }, brl(saidas))),
+React.createElement(Card, { className: "border-[#E50914]/50" }, React.createElement("p", { className: "text-[11px] text-gray-400 uppercase font-semibold" }, "Lucro Líquido Real"), React.createElement("p", { className: text-2xl font-bold font-oswald ${bruto - saidas < 0 ? "text-red-500" : "text-green-500"} }, brl(bruto - saidas))),
+React.createElement("div", { className: "grid grid-cols-2 gap-2" },
+React.createElement(Card, null, React.createElement("p", { className: "text-[10px] text-gray-400 uppercase" }, "Ticket Médio por Cliente"), React.createElement("b", { className: "text-sm text-white font-oswald" }, brl(ticketMedio))),
+React.createElement(Card, null, React.createElement("p", { className: "text-[10px] text-gray-400 uppercase" }, "Faturamento Recorrente"), React.createElement("b", { className: "text-sm text-white font-oswald" }, brl(recorrente)))
+)
+),
+React.createElement(Card, { className: "mt-2" }, React.createElement("h3", { className: "text-xs font-bold text-white uppercase tracking-wider mb-3" }, "Entradas por Tipo de Pagamento"), metodos.map(([lbl, v]) => React.createElement(Bar, { key: lbl, label: lbl, valor: v, max: Math.max(...metodos.map((m) => m), 1) }))),
+React.createElement(Card, { className: "mt-2" }, React.createElement("h3", { className: "text-xs font-bold text-white uppercase tracking-wider mb-3" }, "Divisão de Receita por Barbeiro"), porBarb.map(([lbl, v]) => React.createElement(Bar, { key: lbl, label: lbl, valor: v, max: Math.max(...porBarb.map((m) => m), 1) })))
+)
+);
+}
+function App() {
+const [aba, setAba] = useLocal("vb_aba_ativa", "inicio");
+const [agend, setAgend] = useLocal("vb_agend", []);
+const [despesas, setDespesas] = useLocal("vb_despesas", []);
+const [assin, setAssin] = useLocal("vb_assin", null);
+const [entradas, setEntradas] = useLocal("vb_entradas", []);
+const [selos, setSelos] = useLocal("vb_selos", 0);
+const [adminLogado, setAdminLogado] = useState(false);
+const [promptPin, setPromptPin] = useState(null);
+const [cfg, setCfg] = useLocal("vb_cfg", { servicos: SERV0, barbeiros: BARB0, galeria: GALERIA0 });
+const servicosAtivos = cfg.servicos;
+const buscadorServico = (id) => servicosAtivos.find((x) => x.id === id) || { nome: "Serviço Removido", preco: 0 };
+const planoAtivo = assin && PLANOS.find((p) => p.id === assin.plano);
+const handleAssinatura = (p) => {
+setAssin({ plano: p.id, desde: new Date().toISOString() });
+setEntradas((e) => [...e, { id: uid(), valor: p.preco, metodo: "assinatura", origem: "Assinatura " + p.nome, data: iso(new Date()) }]);
+};
+const handleConclusaoServico = (a) => {
+setAgend((l) => l.map((x) => (x.id === a.id ? { ...x, status: "concluido" } : x)));
+if (a.total > 0) {
+setEntradas((e) => [...e, { id: uid(), valor: a.total, metodo: a.pagamento === "pix" ? "pix" : "local", barbeiro: a.barbeiro, origem: "Serviço", data: a.data }]);
+} else {
+setEntradas((e) => [...e, { id: uid(), valor: 0, metodo: "saldo", barbeiro: a.barbeiro, origem: "Serviço (Assinante)", data: a.data, ref: a.valorTabela }]);
+}
+setSelos((s) => (s + 1 > 10 ? 1 : s + 1));
+};
+return React.createElement("div", { className: "min-h-screen bg-[#121212] text-gray-100 pb-24 max-w-md mx-auto border-x border-white/5 flex flex-col" },
+React.createElement("header", { className: "p-4 flex items-center justify-between border-b border-white/5 bg-[#121212] sticky top-0 z-40" },
+React.createElement("div", { className: "flex items-center gap-3" },
+React.createElement("div", { className: "w-10 h-10 bg-[#E50914] rounded-xl flex items-center justify-center font-oswald text-xl font-bold tracking-tighter text-white shadow-md shadow-red-950" }, "VB"),
+React.createElement("div", null,
+React.createElement("h1", { className: "text-lg font-bold font-oswald tracking-wide text-white uppercase" }, "Vidal ", React.createElement("span", { className: "text-[#E50914]" }, "Barber")),
+React.createElement("p", { className: "text-[10px] text-gray-400 font-medium" }, HORARIO)
+)
+),
+React.createElement("button", {
+onClick: () => (adminLogado ? setAba("admin") : setPromptPin("")),
+className: "w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 bg-[#1E1E1E] border border-white/5 cursor-pointer hover:text-white"
+}, "⚙️")
+),
+React.createElement("main", { className: "p-4 flex-1 space-y-4" },
+aba === "inicio" && React.createElement(Inicio, { selos: selos, plano: planoAtivo, galeria: cfg.galeria }),
+aba === "agendar" && React.createElement(Agendar, { plano: planoAtivo, agend: agend, sv: buscadorServico, cfgBarbeiros: cfg.barbeiros, cfgServicos: cfg.servicos, onSave: (a) => { setAgend((l) => [...l, a]); setAba("meus"); } }),
+aba === "clube" && React.createElement(Clube, { assin: assin, plano: planoAtivo, assinar: handleAssinatura, sv: buscadorServico }),
+aba === "meus" && React.createElement(Meus, { agend: agend, sv: buscadorServico, cancelar: (id) => setAgend((l) => l.map((x) => (x.id === id ? { ...x, status: "cancelado" } : x))) }),
+aba === "admin" && adminLogado && React.createElement(Admin, { agend: agend, despesas: despesas, setDespesas: setDespesas, entradas: entradas, cfg: cfg, setCfg: setCfg, sv: buscadorServico, concluir: handleConclusaoServico, cancelar: (id) => setAgend((l) => l.map((x) => (x.id === id ? { ...x, status: "cancelado" } : x))), sair: () => { setAdminLogado(false); setAba("inicio"); } })
+),
+React.createElement("nav", { className: "fixed bottom-0 inset-x-0 bg-[#1E1E1E] border-t border-white/10 flex max-w-md mx-auto z-40" },
+[["inicio", "🏠", "Início"], ["agendar", "✂️", "Agendar"], ["clube", "👑", "Clube"], ["meus", "📅", "Agenda"]].map(([id, icon, label]) => React.createElement("button", {
+key: id,
+onClick: () => setAba(id),
+className: flex-1 min-h-[58px] flex flex-col items-center justify-center text-[10px] font-bold gap-0.5 cursor-pointer select-none transition ${aba === id ? "text-[#E50914] bg-white/[0.02]" : "text-gray-500 hover:text-gray-300"}
+}, React.createElement("span", { className: "text-base" }, icon), label))
+),
+promptPin !== null && React.createElement(Modal, { onClose: () => setPromptPin(null) },
+React.createElement("h3", { className: "text-base font-bold font-oswald uppercase tracking-wider mb-2 text-white" }, "🔒 Restrito: Painel Administrativo"),
+React.createElement("input", {
+type: "password",
+inputMode: "numeric",
+value: promptPin,
+onChange: (e) => setPromptPin(e.target.value),
+placeholder: "Código PIN de Acesso",
+className: "w-full min-h-[44px] bg-[#121212] rounded-xl px-4 mb-3 outline-none border border-white/10 text-white tracking-widest text-center"
+}),
+React.createElement(Primary, { className: "w-full text-xs min-h-[44px]", onClick: () => { if (promptPin === ADMIN_PIN) { setAdminLogado(true); setAba("admin"); setPromptPin(null); } else setPromptPin(""); } }, "Autenticar Entrada")
+)
+);
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
